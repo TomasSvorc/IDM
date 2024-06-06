@@ -46,8 +46,8 @@ jobs:
 
     - name: Push to Docker Hub
       env:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        DOCKER_USERNAME: ${{ secrets.tomas3110 }}
+        DOCKER_PASSWORD: ${{ secrets.tomas3110 }}
       run: |
         echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
         docker tag identity-management-app:latest $DOCKER_USERNAME/identity-management-app:latest
