@@ -14,6 +14,7 @@ def admin_required(func):
         if current_user.role != 'admin':
             abort(403)
         return func(*args, **kwargs)
+    wrapper.__name__ = func.__name__
     return wrapper
 
 @app.route('/')
@@ -37,7 +38,7 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        role = request.form.get('role', 'user')  # Přidáme možnost nastavit roli
+        role = request.form.get('role', 'user')
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
         new_user = User(username=username, password=hashed_password, role=role)
         db.session.add(new_user)
