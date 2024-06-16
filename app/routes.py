@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, request, flash, abort
+from flask import render_template, redirect, url_for, request, flash, abort, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_user, login_required, logout_user, current_user
 from app import app, db, login_manager
@@ -27,10 +27,14 @@ def login():
         username = request.form['username']
         password = request.form['password']
         user = User.query.filter_by(username=username).first()
-        if user and check_password_hash(user.password, password):
-            login_user(user)
-            return redirect(url_for('admin'))
-        flash('Invalid credentials')
+        if not user:
+            flash('Username not found', 'danger')
+            return redirect(url_for('login')), 404
+        if not check_password_hash(user.password, password):
+            flash('Incorrect password', 'danger')
+            return redirect(url_for('login')), 401
+        login_user(user)
+        return redirect(url_for('admin')), 200
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -39,11 +43,14 @@ def register():
         username = request.form['username']
         password = request.form['password']
         role = request.form.get('role', 'user')
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists', 'danger')
+            return redirect(url_for('register')), 400
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
         new_user = User(username=username, password=hashed_password, role=role)
         db.session.add(new_user)
         db.session.commit()
-        return redirect(url_for('login'))
+        return redirect(url_for('login')), 201
     return render_template('register.html')
 
 @app.route('/admin')
