@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, request, flash
+from flask import render_template, redirect, url_for, request, flash, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_user, login_required, logout_user, current_user
 from app import app, db, login_manager
@@ -7,6 +7,14 @@ from app.models import User
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+def admin_required(func):
+    @login_required
+    def wrapper(*args, **kwargs):
+        if current_user.role != 'admin':
+            abort(403)
+        return func(*args, **kwargs)
+    return wrapper
 
 @app.route('/')
 def index():
@@ -29,43 +37,44 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        hashed_password = generate_password_hash(password, method='sha256')
-        new_user = User(username=username, password=hashed_password)
+        role = request.form.get('role', 'user')  # Přidáme možnost nastavit roli
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+        new_user = User(username=username, password=hashed_password, role=role)
         db.session.add(new_user)
         db.session.commit()
         return redirect(url_for('login'))
     return render_template('register.html')
 
 @app.route('/admin')
-@login_required
+@admin_required
 def admin():
     users = User.query.all()
     return render_template('admin.html', users=users)
 
 @app.route('/add_user', methods=['POST'])
-@login_required
+@admin_required
 def add_user():
     username = request.form['username']
     password = request.form['password']
-    hashed_password = generate_password_hash(password, method='sha256')
+    hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
     new_user = User(username=username, password=hashed_password)
     db.session.add(new_user)
     db.session.commit()
     return redirect(url_for('admin'))
 
 @app.route('/edit_user/<int:id>', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def edit_user(id):
     user = User.query.get(id)
     if request.method == 'POST':
         user.username = request.form['username']
-        user.password = generate_password_hash(request.form['password'], method='sha256')
+        user.password = generate_password_hash(request.form['password'], method='pbkdf2:sha256')
         db.session.commit()
         return redirect(url_for('admin'))
     return render_template('edit_user.html', user=user)
 
 @app.route('/delete_user/<int:id>', methods=['POST'])
-@login_required
+@admin_required
 def delete_user(id):
     user = User.query.get(id)
     db.session.delete(user)
